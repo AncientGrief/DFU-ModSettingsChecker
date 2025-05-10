@@ -3,7 +3,7 @@ The `ModSettingsChecker.cs` script allows you to easily check other mod's settin
 
 # How to use
 ## Installation
-Simply copy the [ModSettingsChecker.cs](https://raw.githubusercontent.com/AncientGrief/DFU-ModSettingsChecker/refs/heads/main/ModSettingsChecker.cs) file to your project/mod.
+Simply copy the [ModSettingsChecker.cs](https://github.com/AncientGrief/DFU-ModSettingsChecker/blob/main/ModSettingsChecker.cs) file to your project/mod.
 
 ## CSV
 You can add a comma separated `.csv` file to your mod (don't forget to add it to the .dfmod with the Mod Builder). Mod Settings Checker can then read it's contents and automatically show it's results.
