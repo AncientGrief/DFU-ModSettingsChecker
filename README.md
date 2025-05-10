@@ -75,23 +75,20 @@ You can also edit `.csv` files with Excel or you use an online tool like [Online
 ## Code
 You can also use C# code to check for your mods. Here is an example you can put in your `Awake()`-method:
 ```csharp
+ModSettingsChecker modChecker = ModSettingsChecker.Create().Init(mod.Title);
+
 //Check Parallax Dungeon Doors by GUID
-ModSettingsChecker.Check("5fc82cd7-6b86-4060-a777-b597f900a6b9", settings =>
+modChecker.Check("5fc82cd7-6b86-4060-a777-b597f900a6b9", settings =>
 {
     settings
-        //Check if BiggerDoors is disabled, if yes show the error message
         .Toggle("Settings", "BiggerDoors", false, "My Mod needs big doors enabled!!!")
-
-        //Check if the BiggerDoorScale is less than 40, if yes show the error message
         .SliderIntLess("Settings", "BiggerDoorScale", 40, "Doors must be at least 40% bigger!");
-
-        //Add as many checks as you want
 });
 
 //Check another mod by name
-ModSettingsChecker.Check("tome of battle", settings =>
+modChecker.Check("tome of battle", settings =>
 {
-    settings.xxx ...
+    settings.xxx
 });
 ```
 
