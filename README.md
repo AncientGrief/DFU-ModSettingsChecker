@@ -10,13 +10,7 @@ You can add a comma separated `.csv` file to your mod (don't forget to add it to
 
 Example code, add this to your `Awake()`-method of your mod:
 ```csharp
-ModSettingsChecker modChecker = ModSettingsChecker.Create().Init(mod.Title);
-
-var settingsToCheck = mod.GetAsset<TextAsset>("SettingsToCheck.csv");
-if(settingsToCheck)
-    modChecker.CheckFromCsv(settingsToCheck);
-else
-    Debug.LogError("SettingsToCheck.csv not found in mod assets!");
+ModSettingsChecker.CheckFromCsv(mod, "SettingsToCheck.csv"); //mod is the instance of your own mod
 ```
 *You can see a complete mod example here: [Complete Mod Example](https://github.com/AncientGrief/DFU-ModSettingsChecker/blob/main/ExampleMod/ExampleMod.cs)*
 

@@ -50,6 +50,17 @@ namespace Game.Mods.ModSettingsChecker
             return new ModSettingsChecker();
         }
 
+        public static void CheckFromCsv(Mod self, string csvName)
+        {
+            ModSettingsChecker modChecker = Create().Init(self.Title);
+
+            var settingsToCheck = self.GetAsset<TextAsset>(csvName);
+            if(settingsToCheck)
+                modChecker.CheckFromCsv(settingsToCheck);
+            else
+                Debug.LogError($"{csvName} not found in mod assets!");
+        }
+
         public ModSettingsChecker Init(string nameOfMod)
         {
             _modName = nameOfMod;

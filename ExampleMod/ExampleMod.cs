@@ -17,15 +17,7 @@ public class ExampleMod : MonoBehaviour
 
     private void Awake()
     {
-        ModSettingsChecker modChecker = ModSettingsChecker.Create().Init(mod.Title);
-
-        ModSettingsChecker.ShowAllModSettings("tome of battle");
-
-        var settingsToCheck = mod.GetAsset<TextAsset>("SettingsToCheck.csv");
-        if(settingsToCheck)
-            modChecker.CheckFromCsv(settingsToCheck);
-        else
-            Debug.LogError("SettingsToCheck.csv not found in mod assets!");
+        ModSettingsChecker.CheckFromCsv(mod, "SettingsToCheck.csv");
 
         //Check Parallax Dungeon Doors
         /*modChecker.Check("5fc82cd7-6b86-4060-a777-b597f900a6b9", settings =>
