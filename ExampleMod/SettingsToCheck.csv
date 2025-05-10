@@ -1,0 +1,3 @@
+ModGuid,Section,Key,Type,ExpectedValue,ErrorMessage
+parallaxdungeondoors,Settings,BiggerDoors,bool,false,My Mod needs big doors enabled!!!
+parallaxdungeondoors,Settings,BiggerDoorScale,int.less,40,Doors must be at least 40% bigger!

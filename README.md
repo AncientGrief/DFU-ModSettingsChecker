@@ -3,7 +3,7 @@ The `ModSettingsChecker.cs` script allows you to easily check other mod's settin
 
 # How to use
 ## Installation
-Simply copy the `ModSettingsChecker.cs` to your project/mod.
+Simply copy the `ModSettingsChecker.cs` file to your project/mod.
 
 ## CSV
 You can add a comma separated `.csv` file to your mod (don't forget to add it to the .dfmod with the Mod Builder). Mod Settings Checker can then read it's contents and automatically show it's results.
@@ -47,7 +47,7 @@ That's it, you only need the correct format for the comma separated .csv file, w
   Here is an example CSV:
 ```
 ModGuid,Section,Key,Type,ExpectedValue,ErrorMessage
-parallaxdungeondoors,Settings,BiggerDoors,bool,true,My Mod needs big doors enabled!!!
+parallaxdungeondoors,Settings,BiggerDoors,bool,false,My Mod needs big doors enabled!!!
 parallaxdungeondoors,Settings,BiggerDoorScale,int.less,40,Doors must be at least 40% bigger!
 ```
 
@@ -96,8 +96,12 @@ private void Awake()
     ModSettingsChecker.Check("5fc82cd7-6b86-4060-a777-b597f900a6b9", settings =>
     {
         settings
-            .Toggle("Settings", "BiggerDoors", true, "My Mod needs big doors enabled!!!")
+            //Check if BiggerDoors is disabled, if yes show the error message
+            .Toggle("Settings", "BiggerDoors", false, "My Mod needs big doors enabled!!!")
+
+            //Check if the BiggerDoorScale is less than 40, if yes show the error message
             .SliderIntLess("Settings", "BiggerDoorScale", 40, "Doors must be at least 40% bigger!");
+
             //Add as many checks as you want
     });
 

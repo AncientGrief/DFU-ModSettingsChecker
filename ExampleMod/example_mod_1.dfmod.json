@@ -1,0 +1,11 @@
+{
+    "ModTitle": "ExampleMod",
+    "ModVersion": "1.0.0",
+    "DFUnity_Version": "1.1.1",
+    "GUID": "05badcb9-5826-4de9-a0e0-2cbb6e26ce93",
+    "Files": [
+        "Assets/Game/Mods/DFU-ModSettingsChecker/ExampleMod/ExampleMod.cs",
+        "Assets/Game/Mods/DFU-ModSettingsChecker/ModSettingsChecker.cs",
+        "Assets/Game/Mods/DFU-ModSettingsChecker/ExampleMod/SettingsToCheck.csv"
+    ]
+}
