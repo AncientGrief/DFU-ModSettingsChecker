@@ -2,6 +2,9 @@
 The `ModSettingsChecker.cs` script allows you to easily check other mod's settings and show an error in the start menu, if the mod is installed and one or more setting values interfer with your own mod.
 
 # How to use
+## Installation
+Simply copy the `ModSettingsChecker.cs` to your project/mod.
+
 ## CSV
 You can add a comma separated `.csv` file to your mod (don't forget to add it to the .dfmod with the Mod Builder). Mod Settings Checker can then read it's contents and automatically show it's results.
 
@@ -34,12 +37,12 @@ public class ExampleMod : MonoBehaviour
 That's it, you only need the correct format for the comma separated .csv file, which looks like this:
 `ModGuid,Section,Key,Type,ExpectedValue,ErrorMessage`
 
-- *ModGuid*: The GUID or Name of the mod you want to check (if you use a name, it must be the name of the .dfmod file (case sensitive), e.g: `tome of battle` or `DaggerBlood`
-- *Section*: The Settings section, which is the blue name in the mod settings windows of DFU
-- *Key*: The Settings Key (or name), which is the yellow name, next to the actual widgets like checkboses, sliders and so on.
-- *Type*: The type of the setting and check to perform (see below for a complete list).
-- *ExpectedValue*: The value a setting must have to show the error message.
-- *ErrorMessage*: The message to show to the user, if the condition is met.
+- **`ModGuid`**: The GUID or Name of the mod you want to check (if you use a name, it must be the name of the .dfmod file (case sensitive), e.g: `tome of battle` or `DaggerBlood`
+- **`Section`**: The Settings section, which is the blue name in the mod settings windows of DFU
+- **`Key`**: The Settings Key (or name), which is the yellow name, next to the actual widgets like checkboses, sliders and so on.
+- **`Type`**: The type of the setting and check to perform (see below for a complete list).
+- **`ExpectedValue`**: The value a setting must have to show the error message.
+- **`ErrorMessage`**: The message to show to the user, if the condition is met.
 
   Here is an example CSV:
 ```
@@ -105,3 +108,17 @@ private void Awake()
     });
 }
 ```
+
+## How to find the settings of a mod?
+There are two ways to figure out the correct Section and Key values of a mod:
+
+### First option: Extracting the mod settings with the Mod Manager
+You can Extract the mod files and go to the folder (DFU data folder, it's show to you in the Startup Screen, you can double click it to open it).
+On Windows it's here: `C:\Users\USERNAME\AppData\LocalLow\Daggerfall Workshop\Daggerfall Unity\Mods\ExtractedFiles`
+Then navigate to `/Mods/ExtractedFiles/MODNAME` and open the `modsettings.json`. Here you'll find all possible settings.
+
+### Second option: Use a piece of debug code
+Mod Settings Checker has a helper method to print all settings of a mod to the Unity debug console:
+Simply call: `ModSettingsChecker.ShowAllModSettings("5fc82cd7-6b86-4060-a777-b597f900a6b9");` or `ModSettingsChecker.ShowAllModSettings("tome of battle");`
+
+Start DFU and go to the Start screen, then filter your Unity log to `[Mod Settings Checker]`. You should see all settings in the log now :)
