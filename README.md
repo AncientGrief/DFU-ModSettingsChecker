@@ -8,33 +8,20 @@ Simply copy the [ModSettingsChecker.cs](https://github.com/AncientGrief/DFU-ModS
 ## CSV
 You can add a comma separated `.csv` file to your mod (don't forget to add it to the .dfmod with the Mod Builder). Mod Settings Checker can then read it's contents and automatically show it's results.
 
-Example code:
+Example code, add this to your `Awake()`-method of your mod:
 ```csharp
-public class ExampleMod : MonoBehaviour
-{
-    private static Mod mod;
+ModSettingsChecker modChecker = ModSettingsChecker.Create().Init(mod.Title);
 
-    [Invoke(StateManager.StateTypes.Start, 0)]
-    public static void Init(InitParams initParams)
-    {
-        mod = initParams.Mod;
-        _ = new GameObject(mod.Title, typeof(ExampleMod));
-    }
-
-    private void Awake()
-    {
-        ModSettingsChecker.Init(mod.Title);
-
-        var settingsToCheck = mod.GetAsset<TextAsset>("SettingsToCheck.csv"); //The name of your .csv file
-        if(settingsToCheck)
-            ModSettingsChecker.CheckFromCsv(settingsToCheck);
-        else
-            Debug.LogError("SettingsToCheck.csv not found in mod assets!");
-    }
-}
+var settingsToCheck = mod.GetAsset<TextAsset>("SettingsToCheck.csv");
+if(settingsToCheck)
+    modChecker.CheckFromCsv(settingsToCheck);
+else
+    Debug.LogError("SettingsToCheck.csv not found in mod assets!");
 ```
+*You can see a complete mod example here: [Complete Mod Example](https://github.com/AncientGrief/DFU-ModSettingsChecker/blob/main/ExampleMod/ExampleMod.cs)*
 
-That's it, you only need the correct format for the comma separated .csv file, which looks like this:
+
+That's it; you only need the correct format for the comma-separated .csv file, which looks like this:
 `ModGuid,Section,Key,Type,ExpectedValue,ErrorMessage`
 
 - **`ModGuid`**: The GUID or Name of the mod you want to check (if you use a name, it must be the name of the .dfmod file (case sensitive), e.g: `tome of battle` or `DaggerBlood`
@@ -46,15 +33,15 @@ That's it, you only need the correct format for the comma separated .csv file, w
 
   Here is an example CSV:
 ```
-ModGuid,Section,Key,Type,ExpectedValue,ErrorMessage
-parallaxdungeondoors,Settings,BiggerDoors,bool,false,My Mod needs big doors enabled!!!
-parallaxdungeondoors,Settings,BiggerDoorScale,int.less,40,Doors must be at least 40% bigger!
+ModGuid, Section, Key, Type, ExpectedValue, ErrorMessage
+parallaxdungeondoors, Settings, BiggerDoors, bool,false, My Mod needs big doors enabled!!!
+parallaxdungeondoors, Settings, BiggerDoorScale, int.less, 40, Doors must be at least 40% bigger!
 ```
 
 You can also edit `.csv` files with Excel or you use an online tool like [Online CSV Editor and Viewer](https://www.convertcsv.com/csv-viewer-editor.htm). Simply paste the example on their page and edit as you see fit.
 
 ### Possible conditions:
-- **`missing`**: Checks if the target mod is missing. GUID or name as ExpecteValue. This can be used to double check missing mods.
+- **`exists`**: Checks if the target mod exists. GUID or name as ExpectedValue. This can be used to double-check missing mods. Example: `modname, null, null, exists, 0, Please also install mod 'modname'!`
 - **`bool`**: Checks if the boolean value matches `true` or `false`.
 - **`int`**: Validates that the integer value is exactly equal to the expected value.
 - **`int.less`**: Validates that the integer value is less than the expected value.
@@ -86,43 +73,60 @@ You can also edit `.csv` files with Excel or you use an online tool like [Online
 - **`string.contains.lower.not`**: Checks if the lowercase string does *not* contain the expected lowercase substring.
 
 ## Code
-You can also use C# code to check for your mods. Here is an example:
+You can also use C# code to check for your mods. Here is an example you can put in your `Awake()`-method:
 ```csharp
-private void Awake()
+//Check Parallax Dungeon Doors by GUID
+ModSettingsChecker.Check("5fc82cd7-6b86-4060-a777-b597f900a6b9", settings =>
 {
-    ModSettingsChecker.Init(mod.Title);
+    settings
+        //Check if BiggerDoors is disabled, if yes show the error message
+        .Toggle("Settings", "BiggerDoors", false, "My Mod needs big doors enabled!!!")
 
-    //Check Parallax Dungeon Doors by GUID
-    ModSettingsChecker.Check("5fc82cd7-6b86-4060-a777-b597f900a6b9", settings =>
-    {
-        settings
-            //Check if BiggerDoors is disabled, if yes show the error message
-            .Toggle("Settings", "BiggerDoors", false, "My Mod needs big doors enabled!!!")
+        //Check if the BiggerDoorScale is less than 40, if yes show the error message
+        .SliderIntLess("Settings", "BiggerDoorScale", 40, "Doors must be at least 40% bigger!");
 
-            //Check if the BiggerDoorScale is less than 40, if yes show the error message
-            .SliderIntLess("Settings", "BiggerDoorScale", 40, "Doors must be at least 40% bigger!");
+        //Add as many checks as you want
+});
 
-            //Add as many checks as you want
-    });
-
-    //Check another mod by name
-    ModSettingsChecker.Check("tome of battle", settings =>
-    {
-        settings.xxx ...
-    });
-}
+//Check another mod by name
+ModSettingsChecker.Check("tome of battle", settings =>
+{
+    settings.xxx ...
+});
 ```
 
 ## How to find the settings of a mod?
 There are two ways to figure out the correct Section and Key values of a mod:
 
-### First option: Extracting the mod settings with the Mod Manager
-You can Extract the mod files and go to the folder (DFU data folder, it's show to you in the Startup Screen, you can double click it to open it).
-On Windows it's here: `C:\Users\USERNAME\AppData\LocalLow\Daggerfall Workshop\Daggerfall Unity\Mods\ExtractedFiles`
-Then navigate to `/Mods/ExtractedFiles/MODNAME` and open the `modsettings.json`. Here you'll find all possible settings.
+### 1st option: Extracting the mod settings with the Mod Manager
+You can Extract the mod files and go to the folder (DFU data folder, it's shown to you in the Startup Screen, you can double-click it to open it).
 
-### Second option: Use a piece of debug code
-Mod Settings Checker has a helper method to print all settings of a mod to the Unity debug console:
-Simply call: `ModSettingsChecker.ShowAllModSettings("5fc82cd7-6b86-4060-a777-b597f900a6b9");` or `ModSettingsChecker.ShowAllModSettings("tome of battle");`
+On Windows it's here:
+`C:\Users\USERNAME\AppData\LocalLow\Daggerfall Workshop\Daggerfall Unity\Mods\ExtractedFiles`
 
-Start DFU and go to the Start screen, then filter your Unity log to `[Mod Settings Checker]`. You should see all settings in the log now :)
+Then navigate to `/Mods/ExtractedFiles/MODNAME` and open the `modsettings.json`.
+Here you'll find all possible settings.
+
+### 2nd option: Use a piece of debug code
+Mod Settings Checker has a static helper method to print all settings of a mod to the Unity debug console:
+Simply call:
+
+`ModSettingsChecker.ShowAllModSettings("5fc82cd7-6b86-4060-a777-b597f900a6b9");`
+
+or
+
+`ModSettingsChecker.ShowAllModSettings("tome of battle");`
+
+Start DFU and go to the Start screen, then filter your Unity log to `[Mod Settings Checker]`.
+You should see all settings in the log now :)
+
+Example output:
+```
+[Mod Settings Checker] Settings for mod Tome of Battle:
+[Mod Settings Checker] Section = 'Controls', Key = 'AttackInput', Type = 'Text' | Value = 'Mouse1'.
+[Mod Settings Checker] Section = 'Controls', Key = 'MeleeMode', Type = 'MultipleChoice' | Value = '2'.
+[Mod Settings Checker] Section = 'Controls', Key = 'VanillaMeleeViewDampenStrength', Type = 'SliderFloat' | Value = '0.5'.
+[Mod Settings Checker] Section = 'HitDetection', Key = 'RadialDistance', Type = 'Toggle' | Value = 'True'.
+[Mod Settings Checker] Section = 'HitDetection', Key = 'RequireLineOfSight', Type = 'Toggle' | Value = 'True'.
+...
+```

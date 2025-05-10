@@ -1,3 +1,7 @@
-ModGuid,Section,Key,Type,ExpectedValue,ErrorMessage
-parallaxdungeondoors,Settings,BiggerDoors,bool,false,My Mod needs big doors enabled!!!
-parallaxdungeondoors,Settings,BiggerDoorScale,int.less,40,Doors must be at least 40% bigger!
+ModGuid, Section, Key, Type, ExpectedValue, ErrorMessage
+parallaxdungeondoors, Settings, BiggerDoors, bool,false, My Mod needs big doors enabled!!!
+parallaxdungeondoors, Settings, BiggerDoorScale, int.less, 40, Doors must be at least 40% bigger!
+Name of a non installed mod, null, null, exists, 0, Please also install the mod 'Name of a non installed mod'!
+tome of battle, HitDetection, RadialDistance, bool, true, Please disable radial distance in Tome of Battle settings!
+tome of battle, PowerAttacks, WidgetOffset, float.tuple.first.equal, 0.25, Please set the first value of the widget offset to be NOT 0.25!
+tome of battle, PowerAttacks, WidgetOffset, float.tuple.second.greater, 0.74, Please set the second value of the widget offset to be greater than 0.74!

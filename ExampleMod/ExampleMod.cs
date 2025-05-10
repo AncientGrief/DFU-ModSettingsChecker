@@ -17,13 +17,13 @@ public class ExampleMod : MonoBehaviour
 
     private void Awake()
     {
-        ModSettingsChecker.Init(mod.Title);
+        ModSettingsChecker modChecker = ModSettingsChecker.Create().Init(mod.Title);
 
-        ModSettingsChecker.ShowAllModSettings("5fc82cd7-6b86-4060-a777-b597f900a6b9");
+        ModSettingsChecker.ShowAllModSettings("tome of battle");
 
         var settingsToCheck = mod.GetAsset<TextAsset>("SettingsToCheck.csv");
         if(settingsToCheck)
-            ModSettingsChecker.CheckFromCsv(settingsToCheck);
+            modChecker.CheckFromCsv(settingsToCheck);
         else
             Debug.LogError("SettingsToCheck.csv not found in mod assets!");
 

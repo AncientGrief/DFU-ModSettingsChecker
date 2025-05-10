@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Game.Mods.ModSettingsChecker
 {
-    public static class ModSettingsChecker
+    public class ModSettingsChecker
     {
         private static class ParseHelper
         {
@@ -37,28 +37,50 @@ namespace Game.Mods.ModSettingsChecker
             }
         }
 
-        private static string modName;
-        private static readonly List<string> errorMessages = new List<string>();
+        private string _modName;
+        private readonly Dictionary<string, Mod> _cachedModsByGuid = new Dictionary<string, Mod>();
+        private readonly Dictionary<string, Mod> _cachedModsByName = new Dictionary<string, Mod>();
+        private readonly Dictionary<string, string> _existErrorMessages = new Dictionary<string, string>();
+        private readonly List<string> _errorMessages = new List<string>();
+
         private static FieldInfo fieldInfo;
 
-        public static void Init(string nameOfMod)
+        public static ModSettingsChecker Create()
         {
-            modName = nameOfMod;
-            DaggerfallStartWindow.OnStartFirstVisible += DaggerfallStartWindow_OnStartFirstVisible;
+            return new ModSettingsChecker();
         }
 
-        private static void DaggerfallStartWindow_OnStartFirstVisible()
+        public ModSettingsChecker Init(string nameOfMod)
         {
-            foreach (var lines in errorMessages.Select(errors => WrapText(errors)))
+            _modName = nameOfMod;
+            _cachedModsByGuid.Clear();
+            _cachedModsByName.Clear();
+            _errorMessages.Clear();
+            _existErrorMessages.Clear();
+
+            DaggerfallStartWindow.OnStartFirstVisible += DaggerfallStartWindow_OnStartFirstVisible;
+
+            return this;
+        }
+
+        private void DaggerfallStartWindow_OnStartFirstVisible()
+        {
+            foreach (var lines in _errorMessages.Select(errors => WrapText(errors)))
             {
-                lines.Insert(0, $"Warning from {modName} mod:");
+                lines.Insert(0, $"Warning from {_modName} mod:");
+                ShowMessageBox(lines.ToArray());
+            }
+
+            foreach (var lines in _existErrorMessages.Select(errors => WrapText(errors.Value)))
+            {
+                lines.Insert(0, $"Warning from {_modName} mod:");
                 ShowMessageBox(lines.ToArray());
             }
 
             DaggerfallStartWindow.OnStartFirstVisible -= DaggerfallStartWindow_OnStartFirstVisible;
         }
 
-        public static void CheckFromCsv(TextAsset csvAsset)
+        public void CheckFromCsv(TextAsset csvAsset)
         {
             string[] lines = csvAsset.text.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
 
@@ -219,6 +241,9 @@ namespace Game.Mods.ModSettingsChecker
                         case "string.contains.lower.not":
                             settings.TextNotContainsToLower(section, key, expectedValue.ToLower(), errorMessage);
                             break;
+                        case "exists":
+                            //Ignore it, it is checked differently
+                            break;
 
                         default:
                             Debug.LogWarning(
@@ -227,33 +252,67 @@ namespace Game.Mods.ModSettingsChecker
                     }
                 });
 
-                //TODO: Save in Dictionary so each mod is only checked once
-                if (!modExists && type == "exists")
-                    AddUiErrorMessage(errorMessage);
+                if (!modExists && !_existErrorMessages.ContainsKey(modGuid) && type == "exists")
+                    _existErrorMessages.Add(modGuid,errorMessage);
             }
         }
 
-        // ReSharper disable once MemberCanBePrivate.Global
-        public static bool Check(string modGuidOrName, Action<ModSettingsRequirement> action)
+        public bool Check(Mod mod, Action<ModSettingsRequirement> action)
         {
-            //TODO Cache Mods...
-            Mod mod = ModManager.Instance.GetModFromGUID(modGuidOrName);
-            if (mod == null)
-            {
-                mod = ModManager.Instance.GetModFromName(modGuidOrName);
-                if (mod == null)
-                    return false;
-            }
+            if(!_cachedModsByGuid.ContainsKey(mod.GUID))
+                _cachedModsByGuid.Add(mod.GUID, mod);
 
-            var req = new ModSettingsRequirement(mod.GetSettings());
+            return CheckInternal(mod, action);
+        }
+
+        // ReSharper disable once MemberCanBePrivate.Global
+        public bool Check(string modGuidOrName, Action<ModSettingsRequirement> action)
+        {
+            Mod mod = TryGetMod(modGuidOrName);
+
+            return mod != null && CheckInternal(mod, action);
+        }
+
+        private bool CheckInternal(Mod mod, Action<ModSettingsRequirement> action)
+        {
+            var req = new ModSettingsRequirement(this, mod.GetSettings());
 
             action(req);
             return true;
         }
 
-        public static void AddUiErrorMessage(string message)
+        private Mod TryGetMod(string modGuidOrName)
         {
-            errorMessages.Add(message);
+            if (!_cachedModsByGuid.TryGetValue(modGuidOrName, out Mod mod))
+            {
+                _cachedModsByName.TryGetValue(modGuidOrName, out mod);
+            }
+
+            if (mod != null)
+                return mod;
+
+            mod = ModManager.Instance.GetModFromGUID(modGuidOrName);
+
+            if (mod != null)
+            {
+                _cachedModsByGuid.Add(modGuidOrName, mod);
+                return mod;
+            }
+
+            mod = ModManager.Instance.GetModFromName(modGuidOrName);
+
+            if (mod != null)
+            {
+                _cachedModsByName.Add(modGuidOrName, mod);
+                return mod;
+            }
+
+            return null;
+        }
+
+        public void AddUiErrorMessage(string message)
+        {
+            _errorMessages.Add(message);
         }
 
         private static List<string> WrapText(string input, int maxLineLength = 50)
@@ -302,7 +361,7 @@ namespace Game.Mods.ModSettingsChecker
             messageBox.Show();
         }
 
-                [Obsolete("This method is intended for debugging purposes only. Remove in production code.")]
+        [Obsolete("This method is intended for debugging purposes only. Remove in production code.")]
         public static void ShowAllModSettings(string modGuidOrName)
         {
             Mod mod = ModManager.Instance.GetModFromGUID(modGuidOrName);
@@ -374,17 +433,19 @@ namespace Game.Mods.ModSettingsChecker
     public class ModSettingsRequirement
     {
         private readonly ModSettings _settings;
+        private readonly ModSettingsChecker _instance;
 
-        public ModSettingsRequirement(ModSettings settings)
+        public ModSettingsRequirement(ModSettingsChecker instance, ModSettings settings)
         {
             _settings = settings;
+            _instance = instance;
         }
 
         public ModSettingsRequirement Toggle(string section, string key, bool expected, string errorMessage)
         {
-            if (_settings.GetBool(section, key) != expected)
+            if (_settings.GetBool(section, key) == expected)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -394,7 +455,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetInt(section, key) < maxValue)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -404,7 +465,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetInt(section, key) > minValue)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -414,7 +475,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetInt(section, key) == expectedValue)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -424,7 +485,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetFloat(section, key) < maxValue)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -435,7 +496,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetFloat(section, key) > minValue)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -446,7 +507,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (Mathf.Approximately(_settings.GetFloat(section, key), expectedValue))
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -457,7 +518,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetTupleInt(section, key).First == expectedValue)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -468,7 +529,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetTupleInt(section, key).Second == expectedValue)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -478,7 +539,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetTupleInt(section, key).First < maxValue)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -488,7 +549,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetTupleInt(section, key).Second < maxValue)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -499,7 +560,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetTupleInt(section, key).First > minValue)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -510,7 +571,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetTupleInt(section, key).Second > minValue)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -521,7 +582,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (Mathf.Approximately(_settings.GetTupleFloat(section, key).First, expectedValue))
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -532,7 +593,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (Mathf.Approximately(_settings.GetTupleFloat(section, key).Second, expectedValue))
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -543,7 +604,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetTupleFloat(section, key).First < maxValue)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -554,7 +615,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetTupleFloat(section, key).Second < maxValue)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -565,7 +626,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetTupleFloat(section, key).First > minValue)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -576,7 +637,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetTupleFloat(section, key).Second > minValue)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -587,7 +648,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetValue<int>(section, key) == expectedChoice)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -598,7 +659,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetValue<int>(section, key) != notExpectedChoice)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -608,7 +669,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetString(section, key) == text)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -618,7 +679,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetString(section, key) != text)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -628,7 +689,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetString(section, key)?.ToLower() == text)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -638,7 +699,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetString(section, key)?.ToLower() != text)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -648,7 +709,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetString(section, key)?.Contains(text) == true)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -658,7 +719,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetString(section, key)?.ToLower().Contains(text) == false)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -668,7 +729,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetString(section, key)?.ToLower().Contains(text) == true)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -679,7 +740,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (_settings.GetString(section, key)?.ToLower().Contains(text) == false)
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
@@ -689,7 +750,7 @@ namespace Game.Mods.ModSettingsChecker
         {
             if (check(_settings))
             {
-                ModSettingsChecker.AddUiErrorMessage(errorMessage);
+                _instance.AddUiErrorMessage(errorMessage);
             }
 
             return this;
