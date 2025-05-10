@@ -19,12 +19,15 @@ public class ExampleMod : MonoBehaviour
     {
         ModSettingsChecker.CheckFromCsv(mod, "SettingsToCheck.csv");
 
-        //Check Parallax Dungeon Doors
-        /*modChecker.Check("5fc82cd7-6b86-4060-a777-b597f900a6b9", settings =>
+        //Alternative via code:
+        /*
+        ModSettingsChecker modChecker = ModSettingsChecker.Create().Init(mod.Title);
+
+        modChecker.Check("5fc82cd7-6b86-4060-a777-b597f900a6b9", settings =>
         {
-            settings
-                .Toggle("Settings", "BiggerDoors", false, "My Mod needs big doors enabled!!!")
+            settings.Toggle("Settings", "BiggerDoors", false, "My Mod needs big doors enabled!!!")
                 .SliderIntLess("Settings", "BiggerDoorScale", 40, "Doors must be at least 40% bigger!");
-        });*/
+        });
+        */
     }
 }
