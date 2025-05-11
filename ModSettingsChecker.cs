@@ -64,14 +64,19 @@ namespace Game.Mods.ModSettingsChecker
         public ModSettingsChecker Init(string nameOfMod)
         {
             _modName = nameOfMod;
-            _cachedModsByGuid.Clear();
-            _cachedModsByName.Clear();
-            _errorMessages.Clear();
-            _existErrorMessages.Clear();
+            ClearAll();
 
             DaggerfallStartWindow.OnStartFirstVisible += DaggerfallStartWindow_OnStartFirstVisible;
 
             return this;
+        }
+
+        private void ClearAll()
+        {
+            _cachedModsByGuid.Clear();
+            _cachedModsByName.Clear();
+            _errorMessages.Clear();
+            _existErrorMessages.Clear();
         }
 
         private void DaggerfallStartWindow_OnStartFirstVisible()
@@ -89,6 +94,7 @@ namespace Game.Mods.ModSettingsChecker
             }
 
             DaggerfallStartWindow.OnStartFirstVisible -= DaggerfallStartWindow_OnStartFirstVisible;
+            ClearAll();
         }
 
         public void CheckFromCsv(TextAsset csvAsset)
